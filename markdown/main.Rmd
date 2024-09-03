@@ -1,0 +1,123 @@
+---
+title: "Main Script"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+`output: html_document` gives the following knittr error and does not produce a html file  
+```
+|     Backtrace:  
+|      1. rmarkdown::render("utils.Rmd")  
+|      2. knitr::knit(knit_input, knit_output, envir = envir, quiet = quiet)  
+|      3. knitr:::process_file(text, output)  
+|      4. knitr:::split_file(lines = text)   
+|      5. base::lapply(...)  
+|      6. knitr (local) FUN(X[[i]], ...)  
+|      7. knitr:::parse_block(g[-1], g[1], params.src, markdown_mode)  
+|     
+|     Quitting from lines 15-33 [unnamed-chunk-1] (main.Rmd)  
+|     Execution halted  
+```
+1. I adhere to [Google's R Style Guide](https://google.github.io/styleguide/Rguide.html)  
+2. Before installing additional packages, make sure to install [Rtools](https://cran.r-project.org/bin/windows/) although you are not building R or R package  
+3. Check packages loaded and more on `sessionInfo()` or `getRversion()`  
+```{r, include = FALSE }
+# The magrittr package is included in the core tidyverse, so you can use %>% whenever you load the tidyverse
+library(tidyverse)
+
+rmarkdown::render("tdi03.Rmd")
+rmarkdown::render("utils.Rmd")
+rmarkdown::render("bc.Rmd")
+rmarkdown::render("bc_cities.Rmd")
+```
+
+The first chunk (invisible and separate from this) includes the following lines of code:  
+```
+|     {r, include = FALSE }  
+|     The magrittr package is included in the core tidyverse, so you can use %>% whenever you load the tidyverse  
+|     library(tidyverse)  
+|        
+|     rmarkdown::render("tdi03.Rmd")  
+|     rmarkdown::render("utils.Rmd")  
+|     rmarkdown::render("bc.Rmd")  
+|     rmarkdown::render("bc_cities.Rmd")  
+```
+
+`include = FALSE` argument can be used to suppress ALL outputs like below, including plots  
+```
+|     |......                                              |     12% [unnamed-chunk-1]  
+|     processing file: bc.Rmd  
+|     output file: bc.knit.md  
+|     "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools/pandoc" +RTS -K512m -RTS bc.knit.md --to html4 --from ...  
+|     Output created: bc.html  
+```  
+* The `render` works with .Rmd files whereas `source()` does .R files  
+* Directory path defaults to the one calling script i.e. this file!  
+```{r}
+countColTitle <- "Count"
+
+# df_accounts <- GetCbarData()
+df_accounts <- GetTdi03Data()
+
+# Useful data frame info
+dim(df_accounts)
+# str(df_accounts)  
+# summary(account_open_df)
+```
+
+```{r}
+df_bank_counts <- CountByCategory(df_accounts, "Bank", countColTitle)
+df_bank_counts
+```
+
+```{r}
+ShowCountsByBankInBars(df_bank_counts, countColTitle)
+```
+
+```{r}
+df_city_counts <- CountByCategory(df_accounts, "City", countColTitle)
+head(SortByColName(df_city_counts, countColTitle, TRUE))
+```
+
+```{r}
+df_city_coords <- GetCityCoords()
+head(df_city_coords)
+```
+
+```{r}
+df_city_coords_with_counts <- AddCountsToCityCoords(df_city_counts, df_city_coords, countColTitle)
+head(df_city_coords_with_counts)
+```
+
+```{r}
+# A list of cities not included in `df_city_coords`
+df_city_not_included <- GetCityNameWithNoCoords(df_city_counts, df_city_coords, countColTitle)
+
+SortByColName(df_city_not_included, countColTitle, TRUE)
+```
+
+```{r}
+objBc <- GetBcRaster()
+dim(objBc$rastBc)
+```
+
+```{r}
+#convert the data frame into shapefile 
+vect_cities <- vect(df_city_coords, geom=c("LongDD", "LatDD"))
+
+plot(objBc$polygonBc, main = "BC Map")
+```
+
+```{r, out.width = '80%'}
+# This line has to be in the SAME chunk to be added to the previous plot!
+# `pch = 20`: smooth circle shape
+plot(objBc$polygonBc)
+plot(vect_cities, pch=20, col="blue", cex = 0.8, alpha = 0.4, main = "All Account Locations", add = TRUE)
+```
+
+```{r}
+plot(objBc$polygonBc)
+# `sqrt()` so that the symbol areas are directly proportional to the quantities
+plot(vect_cities, pch=20, col="blue", cex = sqrt(df_city_coords_with_counts[, countColTitle]/3), alpha = 0.4, main = "Major Account Locations", add = TRUE)
+```

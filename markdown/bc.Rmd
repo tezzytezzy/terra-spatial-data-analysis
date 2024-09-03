@@ -1,0 +1,76 @@
+---
+title: "The Province of BC Raster"
+output: html_document
+---
+```{r}
+library(terra)
+
+# Check the directory where libraries are stored When the necessary files (e.g. .cpg, .cst, .dbf, .fix, .prj, .shp, and .shx) are found for mapping
+# > .libPaths()
+# [1] "C:/Users/teoguma/AppData/Local/R/win-library/4.4" "C:/Program Files/R/R-4.4.1/library"
+# unzip the downloaded file from the website and save them underneath [1]
+
+# Downloaded from https://www12.statcan.gc.ca/census-recensement/2011/geo/bound-limit/bound-limit-2011-eng.cfm (published 2021-11-15)
+# Look into the specified package "terra" and then its sub-directory
+shp_file <- system.file("ex/2011-census-cartographic-boundary-files/gpr_000b11a_e.shp", package="terra")
+# Error in nchar(x[[i]]) : invalid multibyte string, element 2
+```
+
+
+```{r}
+#dirname(shp_file)
+# "C:/Users/teoguma/AppData/Local/R/win-library/4.4/terra/ex/2011-census-cartographic-boundary-files"
+
+#basename(shp_file)
+# "gpr_000b11a_e.shp"
+```
+
+```{r}
+# This shape (.shp) file requires the `opts` parameter as below to correctly read the file (due to a encoding problem)
+#   Otherwise "Error in nchar(x[[i]]) : invalid multibyte..." (https://github.com/rspatial/terra/issues/1389)
+vect_canada <- terra::vect(shp_file, opts = "ENCODING=WINDOWS-1252")
+head(vect_canada)
+```
+
+
+```{r}
+# Get the geometry as a matrix - rarely needed and just demonstration
+geom_canada <- terra::geom(vect_canada)
+head(geom_canada)
+
+# The below is in the “well-known-text” format
+# geom_canada <- terra::geom(vect_canada, wkt = TRUE)
+# geom_canada[1] # TOO BIG TO PRINT OUT THE ENTIRE MATRIX
+# Output
+#   [1] "MULTIPOLYGON (((-123.539773 48.317348, -123.539704...
+```
+
+```{r}
+plot(vect_canada, "PRENAME")
+```
+
+```{r}
+# Extract the attributes (data.frame) from a SpatVector
+df_vect_canada <- as.data.frame(vect_canada)
+
+# Select records
+bc_only <- which (vect_canada$PRENAME == "British Columbia") # Returns 1
+
+polygon_bc <- vect_canada[bc_only, ]
+polygon_bc
+```
+
+```{r}
+rast_bc <- terra::rast(polygon_bc)
+
+# Coerce SpatRaster to SpatVector polygons
+rast_bc <- as.polygons(rast_bc)
+rast_bc
+
+plot(polygon_bc)
+```
+
+```{r}
+# Return multiple objects
+GetBcRaster <- function() { list(rastBc = rast_bc, polygonBc = polygon_bc) }
+```

@@ -1,0 +1,40 @@
+---
+title: "Raw Account Data"
+output: html_document
+---
+```{r}
+library(readr)
+
+GetCbarData <- function() {
+  csv_file <- "CBARSORT.CSV"
+  
+  # Header and data are separated differently (i.e. "," vs. field_separator), so read the file as a character type
+  chars <- readr::read_file(csv_file)
+  chars <- gsub("\"=\"\"", "", chars, fixed = TRUE)
+  
+  # `check.names = FALSE` stops read.csv to automatically replace any space or special characters with a period 
+  df_account <- read.csv(text = chars, sep = ",", colClasses = "character", check.names=FALSE)
+  
+  # Remove white space(s) and "#" from every column name. `fixed = TRUE` specify the exact match
+  colnames(df_account) <- gsub(" ", "", colnames(df_account), fixed = TRUE) 
+  colnames(df_account) <- gsub("#", "", colnames(df_account), fixed = TRUE) 
+  
+  # `Error: unable to find an inherited method for function ‘select’ for signature ‘x = "data.frame"'` 
+  # Because there are two conflicting `select` methods
+  # 1. raster::select
+  # 2. dplyr::select
+  df_account_info <- df_account %>% dplyr::select(c("Bank", "Transit", "Account", "Status", "City"))
+  
+  # Remove all leading and trailing white spaces in every data
+  # The [] can be used whenever we want to return the structure of the old data set for the replaced values
+  # Otherwise, `lapply` returns a list, not a vector
+  df_account_info[] <- lapply(df_account_info, trimws)
+  
+  # Remove closed account(s) by only selecting the open ones
+  df_account_open <- dplyr::filter(df_account_info, Status == "OP")
+  
+  # Remove Status column
+  return(subset(df_account_open, select = -c(Status)))
+}
+```
+  

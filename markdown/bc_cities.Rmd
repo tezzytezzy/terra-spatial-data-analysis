@@ -1,0 +1,101 @@
+---
+title: "BC Cities"
+output: html_document
+---
+```{r}
+library(terra)
+
+# Check the directory where libraries are stored When the necessary files (e.g. .cpg, .cst, .dbf, .fix, .prj, .shp, and .shx) are found for mapping
+# > .libPaths()
+# [1] "C:/Users/teoguma/AppData/Local/R/win-library/4.4" "C:/Program Files/R/R-4.4.1/library"
+# unzip the downloaded file from the website and save them underneath [1]
+
+# Downloaded from https://catalogue.data.gov.bc.ca/dataset/d92224ee-03ef-4904-be53-b677d8e01ac4 (published 2014-12-10)
+shp_file <- system.file("ex/data-catalogue-bc-gazetteer/bc-gazetteer.shp", package="terra")
+```
+
+
+```{r}
+# dirname(shp_file)
+# "C:/Users/teoguma/AppData/Local/R/win-library/4.4/terra/ex/data-catalogue-bc-gazetteer"
+
+# basename(shp_file)
+# "bc-gazetteer.shp"
+```
+
+```{r}
+vect_bc_cities <- terra::vect(shp_file)
+head(vect_bc_cities)
+```
+
+
+```{r}
+# Get the geometry as a matrix - rarely needed and just demonstration
+geom_bc_cities <- terra::geom(vect_bc_cities)
+head(geom_bc_cities)
+```
+
+
+```{r}
+# The below is in the “well-known-text” format
+geom_bc_cities <- terra::geom(vect_bc_cities, wkt = TRUE)
+```
+
+```{r}
+# Extract the attributes (data.frame) from a SpatVector
+df_bc_cities <- as.data.frame(vect_bc_cities)
+
+# Remove duplicate rows based on the two columns, `FeatType` and `FeatTypeCd` - not just one
+df_bc_cities_feat <- df_bc_cities[c("FeatType","FeatTypeCd")] %>%
+                    distinct(FeatType, FeatTypeCd, .keep_all = TRUE)
+
+# Not sure of how to order in the same piped statement above (using a dot (`.`) operator), so here is a separate one.
+head(SortByColName(df_bc_cities_feat, "FeatTypeCd", TRUE))
+# head(df_bc_cities_feat[order(df_bc_cities_feat$FeatTypeCd), ])
+```
+
+```{r}
+# df_bc_cities_feat_count <- df_bc_cities[c("FeatTypeCd")] %>% count(FeatTypeCd)
+df_bc_cities_feat_count <- CountByCategory(df_bc_cities, "FeatTypeCd", "Count")
+df_bc_cities_feat_count
+```
+
+```{r}
+# Add a new "FeatTypeAdded" column to show how many each of them are
+df_bc_cities_feat_count$FeatTypeAdded <- df_bc_cities_feat$FeatType[match(df_bc_cities_feat_count$FeatTypeCd, df_bc_cities_feat$FeatTypeCd)]
+
+# Drop the "FeatTypeCd" column and move the newly added "FeatTypeAdded" before the `Count` column
+subset(df_bc_cities_feat_count, select = -c(FeatTypeCd)) %>% relocate(FeatTypeAdded, .before = Count)
+```
+
+```{r}
+# The above shows the biggest geographically defined areas
+# We take the biggest 6, namely, "city", "Town", "Village (1)", "Resort Municipality", "District Municipality (1)", "Mountain Resort Municipality", "Locality", and "Railway Point"
+df_bc_cities <- dplyr::filter(df_bc_cities, FeatTypeCd %in% c(1, 2, 3, 16, 35, 39, 108, 111))
+
+df_bc_cities <- df_bc_cities[c("OfficlName", "LatDD", "LongDD")]
+head(df_bc_cities)
+```
+
+```{r}
+GetCityCoords <- function() { df_bc_cities }
+```
+
+```{r}
+AddCountsToCityCoords <- function (df_counts_by_city, df_city_coords, countColTitle) {
+  # Add Count column to `df_city_coords`. No Excel like proper() function in R
+  df_city_coords[, countColTitle] <- df_counts_by_city[, countColTitle][match(trimws(toupper(df_city_coords$OfficlName)), trimws(df_counts_by_city$City))]
+  
+  # Remove all the rows with `NA` value in any column
+  # na.omit(df)
+  return(df_city_coords)
+}
+```
+
+```{r}
+GetCityNameWithNoCoords <- function (df_counts_by_city, df_city_coords, countColTitle) {
+  return(df_counts_by_city %>%
+          filter(!City %in% toupper(df_city_coords$OfficlName)) %>%
+         subset(select = c("City", countColTitle)))
+}
+```

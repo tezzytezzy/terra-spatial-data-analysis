@@ -1,0 +1,53 @@
+---
+title: "Utilities"
+output: html_document
+---
+```{r}
+SortByColName <- function(df, sortByColName, boolDecreasing) {
+  return(df[order(df[, sortByColName], decreasing = boolDecreasing), ])
+}
+
+CountByCategory <- function(df_data, countByColName, countColTitle) {
+  vect_data <- rle(sort(df_data[, countByColName]))
+  # Run Length Encoding
+  #   lengths: int [1:8] 176 13 92 362 340 1 12 79
+  #   values : chr [1:8] "0001" "0002" "0003" "0004" "0010" "0012" "0016" "0809"
+  
+  return(setNames(data.frame(vect_data["values"], vect_data["lengths"]), c(countByColName, countColTitle)))
+}
+
+ShowCountsByBankInBars <- function(df, countColTitle) {
+  ConvertBankCodeToName <- function(df, countColTitle) {
+    # bankCodes <- c("0001", "0002", "0003", "0004", "0010", "0012", "0016", "0809")
+    # bankNames <- c("BMO", "BNS", "RBC", "TD", "CIBC", "BoC HK", "HSBC", "Central 1")
+    # df$Bank <- replace(df$Bank, df$Bank %in% bankCodes, bankNames)
+  
+    df_code_name_lookup <- data.frame(Code = c("0001", "0002", "0003", "0004", "0010", "0012", "0016", "0809"),
+                                      Name = c("BMO", "BNS", "RBC", "TD", "CIBC", "BoC HK", "HSBC", "Central 1"))
+    
+    df$Bank <- df_code_name_lookup$Name[match(df$Bank, df_code_name_lookup$Code)]
+        
+    # Bank name + its count
+    df$Bank <- paste0(df$Bank, " (", df[, countColTitle], ")")
+  
+    # Order Bank names (categorical values) by their counts
+    return(SortByColName(df, countColTitle, FALSE))
+  }
+  
+  df <- ConvertBankCodeToName(df, countColTitle)
+  
+  # Set margins so that the Y-axis FI names do not run off the chart. c(bottom, left, top, right) in inches
+  par(mai=c(0.5, 2, 0.5, 0.5))
+  
+  # `las = 1` makes the FI names written horizontally on the y-axis
+  # `drop = FALSE` returns a one-column data frame, not a vector. Otherwise, `colSums()` rejects!
+  return(barplot(height = df[, countColTitle],
+          names = df[, "Bank"],
+  #          density=c(5,10,20),
+  #          angle=c(0,45,90),
+          main = paste0("Accounts (Total of ", colSums(df[, countColTitle, drop = FALSE], na.rm=TRUE), ")"),
+          horiz = TRUE,
+          col="blue",
+          las = 1))
+}
+```

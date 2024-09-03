@@ -1,0 +1,74 @@
+---
+title: "tdi03"
+output: html_document
+---
+```{r}
+library(readr)
+
+GetTdi03Data <- function() {
+  csv_file <- "TDI03_24227.CSV"
+
+  # Somehow I find NULL Character inserted!
+  # "=""[NUL][NUL]PFF"""
+
+  # Read the file as binary
+  r = readBin(csv_file, raw(), file.info(csv_file)$size)
+  
+  # Substitute NUL character, raw(0), with the rare character, raw(1) (i.e. "\01")
+  r[r==as.raw(0)] = as.raw(1)
+  
+  # Remove that character
+  chars = gsub("\01\01", "", rawToChar(r), fixed=TRUE)
+  chars = strsplit(chars, "\n", TRUE)[[1]]  
+
+  # Program Description may contain a value with a comma e.g. "HEALTH, PROTECTION & SAFETY    ", so replace the field separator "," with "|"
+  chars <- gsub("\",\"", "\"|\"", chars, fixed = TRUE)
+  
+  chars <- gsub("=\"", "", chars, fixed = TRUE)
+  chars <- gsub("\"", "", chars, fixed = TRUE)
+  
+  # `check.names = FALSE` stops read.csv to automatically replace any space or special characters with a period 
+  df_account <- read.csv(text = chars, sep = "|", colClasses = "character", check.names=FALSE)
+  
+  
+  # Remove " and "#" from every column name. `fixed = TRUE` specify the exact match
+  colnames(df_account) <- gsub("\"", "", colnames(df_account), fixed = TRUE) 
+  colnames(df_account) <- gsub("#", "", colnames(df_account), fixed = TRUE) 
+  
+  # `Error: unable to find an inherited method for function ‘select’ for signature ‘x = "data.frame"'` 
+  # Because there are two conflicting `select` methods
+  # 1. raster::select
+  # 2. dplyr::select
+  df_account <- df_account %>% dplyr::select(c("Bank", "Transit", "Account", "Status", "City", "POS Equip Bank"))
+  
+  # Remove all leading and trailing white spaces in every data
+  # The [] can be used whenever we want to return the structure of the old data set for the replaced values
+  # Otherwise, `lapply` returns a list, not a vector
+  df_account[] <- lapply(df_account, trimws)
+  
+  # Remove closed account(s) by only selecting the open ones and non-POS terminal accounts
+  df_account_filtered <- dplyr::filter(df_account, Status == "O", `POS Equip Bank` == "")
+  
+  # Remove those 2 filtering columns above
+  df_account_filtered <- df_account_filtered[c("Bank", "Transit", "Account", "City")]
+  
+  # Get only unique accounts (i.e. no duplicates) based on the 3 columns, `Bank`, `Transit` and `Account` - not just one
+  df_account_non_duplicates <- df_account_filtered %>%
+                                distinct(Bank, Transit, Account, .keep_all = TRUE)
+  
+  df_account_duplicates <- df_account_filtered[duplicated(df_account_filtered$Bank) & 
+                                                duplicated(df_account_filtered$Transit) & 
+                                                 duplicated(df_account_filtered$Account), 
+                                               ]
+
+  # This leaves only 1 instance of each set of duplicates
+  df_account_duplicates_merged <- df_account_duplicates %>%
+                                  distinct(Bank, Transit, Account, .keep_all = TRUE)
+
+  # These duplicates are POS or virtual accounts and corresponding City names does not mean much.
+  #   Thus, change them to 'VICTORIA'
+  df_account_duplicates_merged$City <- 'VICTORIA'
+  
+  return(rbind(df_account_non_duplicates, df_account_duplicates_merged))
+}
+```
