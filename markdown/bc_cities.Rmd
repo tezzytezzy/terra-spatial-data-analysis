@@ -51,7 +51,6 @@ df_bc_cities_feat <- df_bc_cities[c("FeatType","FeatTypeCd")] %>%
 
 # Not sure of how to order in the same piped statement above (using a dot (`.`) operator), so here is a separate one.
 head(SortByColName(df_bc_cities_feat, "FeatTypeCd", TRUE))
-# head(df_bc_cities_feat[order(df_bc_cities_feat$FeatTypeCd), ])
 ```
 
 ```{r}
@@ -87,8 +86,7 @@ AddCountsToCityCoords <- function (df_counts_by_city, df_city_coords, countColTi
   df_city_coords[, countColTitle] <- df_counts_by_city[, countColTitle][match(trimws(toupper(df_city_coords$OfficlName)), trimws(df_counts_by_city$City))]
   
   # Remove all the rows with `NA` value in any column
-  # na.omit(df)
-  return(df_city_coords)
+  return(na.omit(df_city_coords))
 }
 ```
 
