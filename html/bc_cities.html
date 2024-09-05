@@ -389,8 +389,7 @@ df_bc_cities_feat &lt;- df_bc_cities[c(&quot;FeatType&quot;,&quot;FeatTypeCd&quo
                     distinct(FeatType, FeatTypeCd, .keep_all = TRUE)
 
 # Not sure of how to order in the same piped statement above (using a dot (`.`) operator), so here is a separate one.
-head(SortByColName(df_bc_cities_feat, &quot;FeatTypeCd&quot;, TRUE))
-# head(df_bc_cities_feat[order(df_bc_cities_feat$FeatTypeCd), ])</code></pre>
+head(SortByColName(df_bc_cities_feat, &quot;FeatTypeCd&quot;, TRUE))</code></pre>
 <pre class="r"><code># df_bc_cities_feat_count &lt;- df_bc_cities[c(&quot;FeatTypeCd&quot;)] %&gt;% count(FeatTypeCd)
 df_bc_cities_feat_count &lt;- CountByCategory(df_bc_cities, &quot;FeatTypeCd&quot;, &quot;Count&quot;)
 df_bc_cities_feat_count</code></pre>
@@ -411,8 +410,7 @@ head(df_bc_cities)</code></pre>
   df_city_coords[, countColTitle] &lt;- df_counts_by_city[, countColTitle][match(trimws(toupper(df_city_coords$OfficlName)), trimws(df_counts_by_city$City))]
   
   # Remove all the rows with `NA` value in any column
-  # na.omit(df)
-  return(df_city_coords)
+  return(na.omit(df_city_coords))
 }</code></pre>
 <pre class="r"><code>GetCityNameWithNoCoords &lt;- function (df_counts_by_city, df_city_coords, countColTitle) {
   return(df_counts_by_city %&gt;%

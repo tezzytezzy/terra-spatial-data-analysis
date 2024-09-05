@@ -384,7 +384,26 @@ GetCbarData &lt;- function() {
   df_account_open &lt;- dplyr::filter(df_account_info, Status == &quot;OP&quot;)
   
   # Remove Status column
-  return(subset(df_account_open, select = -c(Status)))
+  df_account_filtered &lt;- df_account_open[c(&quot;Bank&quot;, &quot;Transit&quot;, &quot;Account&quot;, &quot;City&quot;)]
+  
+  # Get only unique accounts (i.e. no duplicates) based on the 3 columns, `Bank`, `Transit` and `Account` - not just one
+  df_account_non_duplicates &lt;- df_account_filtered %&gt;%
+                                distinct(Bank, Transit, Account, .keep_all = TRUE)
+  
+  df_account_duplicates &lt;- df_account_filtered[duplicated(df_account_filtered$Bank) &amp; 
+                                                duplicated(df_account_filtered$Transit) &amp; 
+                                                 duplicated(df_account_filtered$Account), 
+                                               ]
+
+  # This leaves only 1 instance of each set of duplicates
+  df_account_duplicates_merged &lt;- df_account_duplicates %&gt;%
+                                  distinct(Bank, Transit, Account, .keep_all = TRUE)
+
+  # These duplicates are POS or virtual accounts and corresponding City names does not mean much.
+  #   Thus, change them to &#39;VICTORIA&#39;
+  df_account_duplicates_merged$City &lt;- &#39;VICTORIA&#39;
+  
+  return(rbind(df_account_non_duplicates, df_account_duplicates_merged))
 }</code></pre>
 
 
